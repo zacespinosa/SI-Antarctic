@@ -29,6 +29,7 @@ class DataTransformer():
         save_path (str): path to save data to
         """
         self.save_path = save_path
+        self.skip_vars = ["latitude", "longitude", "lev", "time", "lon", "lat", "lat_bnds", "lon_bnds", "time_bnds"]
         
 
     def regrid(
@@ -58,7 +59,7 @@ class DataTransformer():
             
         # If myvars is None, regrid all variables in dataset
         if not myvars:
-            myvars = [v for v in list(ds.variables.keys()) if v not in ["latitude", "longitude", "lev", "time", "lon", "lat", "lat_bnds", "lon_bnds", "time_bnds"]]
+            myvars = [v for v in list(ds.variables.keys()) if v not in self.skip_vars]
 
         # Use default grid
         if not grid:
@@ -90,8 +91,8 @@ class DataTransformer():
 
     def calculate_anoms_climatology(
         self,
-        ds: xr.Dataset = None, 
-        myvars: List[str] = None, 
+        ds: xr.Dataset = False,
+        myvars: List[str] = False,
         ref_period: Tuple[str, str] = ("2000-01-01", "2020-01-01"),
         freq: str ="month",
         save_name: str = "",
@@ -112,7 +113,7 @@ class DataTransformer():
         ds (xr.Dataset): xarray dataset containing anomalies
         """
         save_name = os.path.join(self.save_path, save_name)
-        if ds == None: 
+        if not ds: 
             ds_anoms = xr.open_dataset(f"{save_name}-clim.nc")
             ds_clim = xr.open_dataset(f"{save_name}-anoms.nc")
             return {"anoms": ds_anoms, "clim": ds_clim}
@@ -120,8 +121,8 @@ class DataTransformer():
         # Add time bounds
         ds = ds.bounds.add_bounds("T")
 
-        if myvars == None: 
-            myvars = [v for v in list(ds.variables.keys()) if v not in ["lev", "time", "lon", "lat", "lat_bnds", "lon_bnds", "time_bnds"]]
+        if not myvars: 
+            myvars = [v for v in list(ds.variables.keys()) if v not in self.skip_vars]
         
         ds_clim, ds_anoms = xr.Dataset(), xr.Dataset()
         for cvar in myvars:
@@ -142,8 +143,8 @@ class DataTransformer():
     
     def calculate_linear_time_trend(
         self,
-        ds: xr.Dataset = None, 
-        myvars: List[str] = None,
+        ds: xr.Dataset = False, 
+        myvars: List[str] = False,
         save_name: str = "",
         save: bool = False,
     ) -> xr.Dataset:
@@ -160,18 +161,19 @@ class DataTransformer():
         ds (xr.Dataset): xarray dataset containing anomalies
         """
         save_name = os.path.join(self.save_path, save_name)
-        if ds == None: 
+        if not ds:
             return xr.open_dataset(f"{save_name}-trends.nc")
 
-        if myvars == None:
-            myvars = [v for v in list(ds.variables.keys()) if v not in ["lev", "time", "lon", "lat", "lat_bnds", "lon_bnds", "time_bnds"]]
+        if not myvars:
+            myvars = [v for v in list(ds.variables.keys()) if v not in self.skip_vars]
 
-        # rechunk ds along time 
+        # rechunk ds along time
         ds = ds.chunk({"time": -1})
+        time = xr.DataArray(np.arange(ds.time.shape[0]), dims=["time"])
 
         ds_trends = xr.Dataset()
         for cvar in myvars:
-            ds_trends[cvar] = xscore.linslope(ds.time, ds[cvar], dim="time", keep_attrs=True)
+            ds_trends[cvar] = xscore.linslope(time, ds[cvar], dim="time", skipna=True, keep_attrs=True)
 
         ds_trends = ds_trends.assign_attrs(ds.attrs)
 
@@ -190,32 +192,32 @@ dataloader = DataLoader(
 
 
 ####### TESTING #######
-def _test_cesm2_ice(dataloader):
-    ice_cesm2 = dataloader.regrid(ice_cesm2)
-    ice_cesm2_trend = dataloader.calculate_linear_time_trend(ice_cesm2, myvars=["aice"])
-    ice_cesm2_ac = dataloader.calculate_anoms_climatology(ice_cesm2, ref_period=("1950-01-01", "1950-02-01"))
-    print(ice_cesm2_ac["anoms"])
+# def _test_cesm2_ice(dataloader):
+#     ice_cesm2 = dataloader.regrid(ice_cesm2)
+#     ice_cesm2_trend = dataloader.calculate_linear_time_trend(ice_cesm2, myvars=["aice"])
+#     ice_cesm2_ac = dataloader.calculate_anoms_climatology(ice_cesm2, ref_period=("1950-01-01", "1950-02-01"))
+#     print(ice_cesm2_ac["anoms"])
 
-def _test_cesm2_ocn(dataloader):
-    ocn_mxl = dataloader.regrid(ocn_mxl)
-    ocn_mxl_ac = dataloader.calculate_anoms_climatology(ocn_mxl, ref_period=("1950-01-01", "1950-02-01"))
-    print(ocn_mxl_ac["anoms"])
+# def _test_cesm2_ocn(dataloader):
+#     ocn_mxl = dataloader.regrid(ocn_mxl)
+#     ocn_mxl_ac = dataloader.calculate_anoms_climatology(ocn_mxl, ref_period=("1950-01-01", "1950-02-01"))
+#     print(ocn_mxl_ac["anoms"])
 
-    ocn_sst = dataloader.regrid(ocn_sst)
-    ocn_sst_ac = dataloader.calculate_anoms_climatology(ocn_sst, ref_period=("1950-01-01", "1950-02-01"))
-    print(ocn_sst_ac["anoms"])
+#     ocn_sst = dataloader.regrid(ocn_sst)
+#     ocn_sst_ac = dataloader.calculate_anoms_climatology(ocn_sst, ref_period=("1950-01-01", "1950-02-01"))
+#     print(ocn_sst_ac["anoms"])
 
-def _test_cesm2_atm(dataloader):
-    atm_cesm2 = dataloader.regrid(atm_cesm2)
-    atm_cesm2_ac = dataloader.calculate_anoms_climatology(atm_cesm2, ref_period=("1950-01-01", "1950-02-01"))
-    atm_cesm2_trends = dataloader.calculate_linear_time_trend(atm_cesm2, myvars=["U10", "PSL"])
-    print(atm_cesm2_ac["anoms"])
+# def _test_cesm2_atm(dataloader):
+#     atm_cesm2 = dataloader.regrid(atm_cesm2)
+#     atm_cesm2_ac = dataloader.calculate_anoms_climatology(atm_cesm2, ref_period=("1950-01-01", "1950-02-01"))
+#     atm_cesm2_trends = dataloader.calculate_linear_time_trend(atm_cesm2, myvars=["U10", "PSL"])
+#     print(atm_cesm2_ac["anoms"])
 
 
 def _test_era5_single_level(dataloader, datatransformer):
     cvar = "10m_u_component_of_wind"
     era5_data = dataloader.get_era5_data(
-        level="single", 
+        level="single",
         info={
             "vars": [cvar],
             "years": [str(yr) for yr in list(range(1979, 2023))],
@@ -227,9 +229,18 @@ def _test_era5_single_level(dataloader, datatransformer):
     )
     era5_data = era5_data.sel(time=slice("1979-01-01", "1980-01-01"))
     era5_data = datatransformer.regrid(ds=era5_data, myvars=["u10"], save=False)
-    # era5_data_ac = datatransformer.calculate_anoms_climatology(era5_data, ref_period=("1979-01-01", "1980-01-01"))
-    # print(era5_data_ac["anoms"])
-    # era5_data_trends = datatransformer.calculate_linear_time_trend(era5_data, myvars=["10m_u_component_of_wind"])
+    era5_data_ac = datatransformer.calculate_anoms_climatology(
+        ds=False,
+        ref_period=("1979-01-01", "1980-01-01"),
+        save_name=f"ERA5_monthly_1979-01_2023-12_{cvar}",
+        save=False,
+    )
+    print(era5_data_ac["anoms"])
+    era5_data_trends = datatransformer.calculate_linear_time_trend(
+        era5_data,
+        save=True,
+        save_name=f"ERA5_monthly_1979-01_2023-12_{cvar}",
+    )
     # print(era5_data_trends)
 
 def test_runner():
@@ -242,11 +253,11 @@ def test_runner():
         era5_root="/glade/work/zespinosa/data/era5/monthly"
     )
     datatransformer = DataTransformer(
-        save_path='./data')
+        save_path='/glade/work/zespinosa/Projects/SI-Antarctic/data')
 
     # Test ERA5
     _test_era5_single_level(dataloader, datatransformer)
-    # _test_era5_pressure_level(dataloader)
+    # _test_era5_pressure_level(dataloader, datatransformer)
 
     # Test CESM2
     # _test_cesm2_ice(dataloader)

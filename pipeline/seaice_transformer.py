@@ -20,6 +20,17 @@ class SeaIceTransformer():
         pass
 
 
+    def region_regions(self) -> xr.Dataset:
+        """
+        Mask data to get regions
+        Arguments:
+        ----------
+        Returns:
+        ----------
+        siconc regions (xr.Dataset)
+        """
+        pass
+
     def calc_sia_sie(
         self,
         area: xr.DataArray,
