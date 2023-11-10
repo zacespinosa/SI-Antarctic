@@ -33,12 +33,11 @@ class DataTransformer():
 
     def regrid(
         self,
-        ds: xr.Dataset = None, 
-        myvars: List[str] = None, 
-        grid: np.ndarray = None,
+        ds: xr.Dataset = False, 
+        myvars: List[str] = False, 
+        grid: np.ndarray = False,
         save_name: str = "", 
         save: bool = False,
-        load: bool = False,
     ) -> xr.Dataset:
         """
         Regrid each variable in ds[myvars] to a new grid 
@@ -54,15 +53,15 @@ class DataTransformer():
         ds (xr.Dataset): xarray dataset containing regridded variables
         """
         save_name = os.path.join(self.save_path, save_name)
-        if ds == None: 
+        if not ds: 
             return xr.open_dataset(f"{save_name}.nc")
             
         # If myvars is None, regrid all variables in dataset
-        if myvars == None:
-            myvars = [v for v in list(ds.variables.keys()) if v not in ["lev", "time", "lon", "lat", "lat_bnds", "lon_bnds", "time_bnds"]]
+        if not myvars:
+            myvars = [v for v in list(ds.variables.keys()) if v not in ["latitude", "longitude", "lev", "time", "lon", "lat", "lat_bnds", "lon_bnds", "time_bnds"]]
 
         # Use default grid
-        if grid == None:
+        if not grid:
             lat = np.arange(-89.5, 90.5, 1)
             lon = np.arange(.5, 360.5, 1)
             grid = xc.create_grid(lat, lon)
@@ -213,6 +212,26 @@ def _test_cesm2_atm(dataloader):
     print(atm_cesm2_ac["anoms"])
 
 
+def _test_era5_single_level(dataloader, datatransformer):
+    cvar = "10m_u_component_of_wind"
+    era5_data = dataloader.get_era5_data(
+        level="single", 
+        info={
+            "vars": [cvar],
+            "years": [str(yr) for yr in list(range(1979, 2023))],
+            "months": ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10","11", "12"],
+            "area":[90, -180, -90, 180],
+            "time":"00:00",
+            "save_name": f"ERA5_monthly_1979-01_2023-12_{cvar}"
+        }
+    )
+    era5_data = era5_data.sel(time=slice("1979-01-01", "1980-01-01"))
+    era5_data = datatransformer.regrid(ds=era5_data, myvars=["u10"], save=False)
+    # era5_data_ac = datatransformer.calculate_anoms_climatology(era5_data, ref_period=("1979-01-01", "1980-01-01"))
+    # print(era5_data_ac["anoms"])
+    # era5_data_trends = datatransformer.calculate_linear_time_trend(era5_data, myvars=["10m_u_component_of_wind"])
+    # print(era5_data_trends)
+
 def test_runner():
     dataloader = DataLoader(
         root = [
@@ -222,9 +241,11 @@ def test_runner():
         ],
         era5_root="/glade/work/zespinosa/data/era5/monthly"
     )
+    datatransformer = DataTransformer(
+        save_path='./data')
 
     # Test ERA5
-    # _test_era5_single_level(dataloader)
+    _test_era5_single_level(dataloader, datatransformer)
     # _test_era5_pressure_level(dataloader)
 
     # Test CESM2
@@ -232,7 +253,7 @@ def test_runner():
     # _test_cesm2_ocn(dataloader)
     # _test_cesm2_atm(dataloader)
 
-    pass
+test_runner()
 
 
 # atm => h0.*
