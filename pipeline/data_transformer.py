@@ -7,7 +7,7 @@ Date: Nov 9, 2023
 import os
 
 from glob import glob
-from typing import List, Tuple, Dict
+from typing import List, Tuple
 
 import numpy as np
 import xarray as xr
@@ -29,7 +29,7 @@ class DataTransformer():
         save_path (str): path to save data to
         """
         self.save_path = save_path
-        self.skip_vars = ["latitude", "longitude", "lev", "time", "lon", "lat", "lat_bnds", "lon_bnds", "time_bnds"]
+        self.skip_vars = ["latitude", "longitude", "lev", "level", "time", "lon", "lat", "lat_bnds", "lon_bnds", "time_bnds", "lev_bnds"]
         
 
     def regrid(
@@ -54,7 +54,7 @@ class DataTransformer():
         ds (xr.Dataset): xarray dataset containing regridded variables
         """
         save_name = os.path.join(self.save_path, save_name)
-        if not ds: 
+        if not ds:
             return xr.open_dataset(f"{save_name}.nc")
             
         # If myvars is None, regrid all variables in dataset
@@ -74,7 +74,7 @@ class DataTransformer():
         ds_regrid = xr.merge(ds_regrid)
 
         if save:
-            ds_regrid.to_netcdf(f"{save_name}.nc")
+            ds_regrid.to_netcdf(f"{save_name}-regrid.nc")
 
         return ds_regrid
 
@@ -113,7 +113,7 @@ class DataTransformer():
         ds (xr.Dataset): xarray dataset containing anomalies
         """
         save_name = os.path.join(self.save_path, save_name)
-        if not ds: 
+        if not ds:
             ds_anoms = xr.open_dataset(f"{save_name}-clim.nc")
             ds_clim = xr.open_dataset(f"{save_name}-anoms.nc")
             return {"anoms": ds_anoms, "clim": ds_clim}
@@ -121,7 +121,7 @@ class DataTransformer():
         # Add time bounds
         ds = ds.bounds.add_bounds("T")
 
-        if not myvars: 
+        if not myvars:
             myvars = [v for v in list(ds.variables.keys()) if v not in self.skip_vars]
         
         ds_clim, ds_anoms = xr.Dataset(), xr.Dataset()
@@ -173,7 +173,7 @@ class DataTransformer():
 
         ds_trends = xr.Dataset()
         for cvar in myvars:
-            ds_trends[cvar] = xscore.linslope(time, ds[cvar], dim="time", skipna=True, keep_attrs=True)
+            ds_trends[cvar] = xscore.linslope(time, ds[cvar], dim="time", skipna=False, keep_attrs=True)
 
         ds_trends = ds_trends.assign_attrs(ds.attrs)
 
@@ -182,13 +182,13 @@ class DataTransformer():
 
         return ds_trends
 
-
-dataloader = DataLoader(
-    root = [
-        "/glade/campaign/univ/uwas0118/scratch/archive/1950_2015/",
-        "/glade/scratch/zespinosa/archive/cesm2.1.3_BHISTcmip6_f09_g17_ERA5_nudge/", 
-        "/glade/scratch/zespinosa/archive/cesm2.1.3_BSSP370cmip6_f09_g17_ERA5_nudge/"
-    ])
+############################################################################################################
+# dataloader = DataLoader(
+#     root = [
+#         "/glade/campaign/univ/uwas0118/scratch/archive/1950_2015/",
+#         "/glade/scratch/zespinosa/archive/cesm2.1.3_BHISTcmip6_f09_g17_ERA5_nudge/", 
+#         "/glade/scratch/zespinosa/archive/cesm2.1.3_BSSP370cmip6_f09_g17_ERA5_nudge/"
+#     ])
 
 
 ####### TESTING #######
@@ -214,49 +214,49 @@ dataloader = DataLoader(
 #     print(atm_cesm2_ac["anoms"])
 
 
-def _test_era5_single_level(dataloader, datatransformer):
-    cvar = "10m_u_component_of_wind"
-    era5_data = dataloader.get_era5_data(
-        level="single",
-        info={
-            "vars": [cvar],
-            "years": [str(yr) for yr in list(range(1979, 2023))],
-            "months": ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10","11", "12"],
-            "area":[90, -180, -90, 180],
-            "time":"00:00",
-            "save_name": f"ERA5_monthly_1979-01_2023-12_{cvar}"
-        }
-    )
-    era5_data = era5_data.sel(time=slice("1979-01-01", "1980-01-01"))
-    era5_data = datatransformer.regrid(ds=era5_data, myvars=["u10"], save=False)
-    era5_data_ac = datatransformer.calculate_anoms_climatology(
-        ds=False,
-        ref_period=("1979-01-01", "1980-01-01"),
-        save_name=f"ERA5_monthly_1979-01_2023-12_{cvar}",
-        save=False,
-    )
-    print(era5_data_ac["anoms"])
-    era5_data_trends = datatransformer.calculate_linear_time_trend(
-        era5_data,
-        save=True,
-        save_name=f"ERA5_monthly_1979-01_2023-12_{cvar}",
-    )
-    # print(era5_data_trends)
+# def _test_era5_single_level(dataloader, datatransformer):
+#     cvar = "10m_u_component_of_wind"
+#     era5_data = dataloader.get_era5_data(
+#         level="single",
+#         info={
+#             "vars": [cvar],
+#             "years": [str(yr) for yr in list(range(1979, 2023))],
+#             "months": ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10","11", "12"],
+#             "area":[90, -180, -90, 180],
+#             "time":"00:00",
+#             "save_name": f"ERA5_monthly_1979-01_2023-12_{cvar}"
+#         }
+#     )
+#     era5_data = era5_data.sel(time=slice("1979-01-01", "1980-01-01"))
+#     era5_data = datatransformer.regrid(ds=era5_data, myvars=["u10"], save=False)
+#     era5_data_ac = datatransformer.calculate_anoms_climatology(
+#         ds=False,
+#         ref_period=("1979-01-01", "1980-01-01"),
+#         save_name=f"ERA5_monthly_1979-01_2023-12_{cvar}",
+#         save=False,
+#     )
+#     print(era5_data_ac["anoms"])
+#     era5_data_trends = datatransformer.calculate_linear_time_trend(
+#         era5_data,
+#         save=True,
+#         save_name=f"ERA5_monthly_1979-01_2023-12_{cvar}",
+#     )
+#     # print(era5_data_trends)
 
-def test_runner():
-    dataloader = DataLoader(
-        root = [
-            "/glade/campaign/univ/uwas0118/scratch/archive/1950_2015/",
-            "/glade/scratch/zespinosa/archive/cesm2.1.3_BHISTcmip6_f09_g17_ERA5_nudge/", 
-            "/glade/scratch/zespinosa/archive/cesm2.1.3_BSSP370cmip6_f09_g17_ERA5_nudge/"
-        ],
-        era5_root="/glade/work/zespinosa/data/era5/monthly"
-    )
-    datatransformer = DataTransformer(
-        save_path='/glade/work/zespinosa/Projects/SI-Antarctic/data')
+# def test_runner():
+#     dataloader = DataLoader(
+#         root = [
+#             "/glade/campaign/univ/uwas0118/scratch/archive/1950_2015/",
+#             "/glade/scratch/zespinosa/archive/cesm2.1.3_BHISTcmip6_f09_g17_ERA5_nudge/", 
+#             "/glade/scratch/zespinosa/archive/cesm2.1.3_BSSP370cmip6_f09_g17_ERA5_nudge/"
+#         ],
+#         era5_root="/glade/work/zespinosa/data/era5/monthly"
+#     )
+#     datatransformer = DataTransformer(
+#         save_path='/glade/work/zespinosa/Projects/SI-Antarctic/data')
 
     # Test ERA5
-    _test_era5_single_level(dataloader, datatransformer)
+    # _test_era5_single_level(dataloader, datatransformer)
     # _test_era5_pressure_level(dataloader, datatransformer)
 
     # Test CESM2
@@ -264,10 +264,4 @@ def test_runner():
     # _test_cesm2_ocn(dataloader)
     # _test_cesm2_atm(dataloader)
 
-test_runner()
-
-
-# atm => h0.*
-# cice => h.*
-# pop => h.nday1.* = SST or h. = HMXL
-    
+# test_runner()

@@ -1,5 +1,6 @@
 """
 Define a class for loading CESM2 and ERA5 data
+TODO: add test function to data loader and run
 
 Author: Zac Espinosa 
 Date: Nov 9, 2023
@@ -33,6 +34,21 @@ class DataLoader():
         """
         self.root = root
         self.era5_root = era5_root
+
+    def get_nsidc_data(self, hem="south") -> xr.Dataset:
+        """
+        TODO: This should be adaptive for both north and south hemispheres
+
+        Arguments:
+        ----------
+        hem (str): north or south
+        Returns:
+        ----------
+        nsidc (xr.Dataset): dataset of NSIDC sea ice concentration data (either north or south)
+        """
+        nsidc = xr.open_dataset(f"/glade/work/zespinosa/data/nsidc/daily/{hem}/raw/seaice_conc_monthly_197901-202308.nc")
+
+        return nsidc
 
 
     def get_era5_data(
@@ -146,14 +162,15 @@ class DataLoader():
         files = sorted(files)
 
         # Remove files that contain SST data from the ocean component and we're not interested in SST databbb
-        if comp == "ocn" and h == "h": 
+        if comp == "ocn" and h == "h":
             files = [f for f in files if ("nday1" not in f) and ("once" not in f)]
 
         print(f"Loading {comp} data from {len(files)} files...")
-        if testing: files = files[:5]
+        if testing: files = files[:30]
+        print(files[:5])
 
         # Lazy load data
-        cesm2 = xr.open_mfdataset(files, coords="minimal", parallel=True) 
+        cesm2 = xr.open_mfdataset(files, coords="minimal", chunks={"time": 1, "nj": 384, "ni": 320})
 
         # Rename lat and lon coordinates (annoyingly, this is different for each component)
         if comp == "ice":
@@ -183,95 +200,95 @@ class DataLoader():
 
 
 ####### TESTING #######
-def _test_cesm2_ice(dataloader):
-    ice_cesm2 = dataloader.get_cesm2_data(
-        comp="ice",
-        myvars=["aice", "daidtt", "daidtd", "dvidtt", "dvidtd", "sithick", "uvel", "vvel"],
-        testing=True
-    )
-    print(ice_cesm2)
+# def _test_cesm2_ice(dataloader):
+#     ice_cesm2 = dataloader.get_cesm2_data(
+#         comp="ice",
+#         myvars=["aice", "daidtt", "daidtd", "dvidtt", "dvidtd", "sithick", "uvel", "vvel"],
+#         testing=True
+#     )
+#     print(ice_cesm2)
 
-def _test_era5_single_level(dataloader):
-    myvars = [
-        '10m_u_component_of_wind', 
-        '10m_v_component_of_wind',
-        '10m_wind_speed',
-        '2m_temperature', 
-        'mean_sea_level_pressure', 
-        'sea_surface_temperature',
-    ]
-    for cvar in myvars:
-        era5_data = dataloader.get_era5_data(
-            level="single", 
-            info={
-                "vars": [cvar],
-                "years": [str(yr) for yr in list(range(1979, 2023))],
-                "months": ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10","11", "12"],
-                "area":[90, -180, -90, 180],
-                "time":"00:00",
-                "save_name": f"ERA5_monthly_1979-01_2023-12_{cvar}"
-            }
-        )
-        print(era5_data)
-        break
+# def _test_era5_single_level(dataloader):
+#     myvars = [
+#         '10m_u_component_of_wind', 
+#         '10m_v_component_of_wind',
+#         '10m_wind_speed',
+#         '2m_temperature', 
+#         'mean_sea_level_pressure', 
+#         'sea_surface_temperature',
+#     ]
+#     for cvar in myvars:
+#         era5_data = dataloader.get_era5_data(
+#             level="single", 
+#             info={
+#                 "vars": [cvar],
+#                 "years": [str(yr) for yr in list(range(1979, 2023))],
+#                 "months": ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10","11", "12"],
+#                 "area":[90, -180, -90, 180],
+#                 "time":"00:00",
+#                 "save_name": f"ERA5_monthly_1979-01_2023-12_{cvar}"
+#             }
+#         )
+#         print(era5_data)
+#         break
 
-def _test_era5_pressure_level(dataloader):
-    myvars = [
-        'geopotential', 
-        'temperature', 
-        'u_component_of_wind',
-        'v_component_of_wind',
-    ]
-    for cvar in myvars:
-        era5_data = dataloader.get_era5_data(
-            level="pressure", 
-            info={
-                "vars": [cvar],
-                "years": [str(yr) for yr in list(range(1979, 2023))],
-                "months": ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10","11", "12"],
-                "area":[90, -180, -90, 180],
-                "time":"00:00",
-                "pressure_levels": ["1000", "500"],
-                "save_name": f"ERA5_monthly_1979-01_2023-12_plevels_{cvar}"
-            }
-        )
-        print(era5_data)
-        break
+# def _test_era5_pressure_level(dataloader):
+#     myvars = [
+#         'geopotential', 
+#         'temperature', 
+#         'u_component_of_wind',
+#         'v_component_of_wind',
+#     ]
+#     for cvar in myvars:
+#         era5_data = dataloader.get_era5_data(
+#             level="pressure", 
+#             info={
+#                 "vars": [cvar],
+#                 "years": [str(yr) for yr in list(range(1979, 2023))],
+#                 "months": ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10","11", "12"],
+#                 "area":[90, -180, -90, 180],
+#                 "time":"00:00",
+#                 "pressure_levels": ["1000", "500"],
+#                 "save_name": f"ERA5_monthly_1979-01_2023-12_plevels_{cvar}"
+#             }
+#         )
+#         print(era5_data)
+#         break
 
-def _test_cesm2_ocn(dataloader):
-    ocn_sst = dataloader.get_data(comp="ocn", myvars=["SST"], testing=True)
-    print(ocn_sst)
-    ocn_mxl = dataloader.get_data(comp="ocn", myvars=["HMXL"], testing=True)
-    print(ocn_mxl)
+# def _test_cesm2_ocn(dataloader):
+#     ocn_sst = dataloader.get_data(comp="ocn", myvars=["SST"], testing=True)
+#     print(ocn_sst)
+#     ocn_mxl = dataloader.get_data(comp="ocn", myvars=["HMXL"], testing=True)
+#     print(ocn_mxl)
 
-def _test_cesm2_atm(dataloader):
-    atm_cesm2 = dataloader.get_cesm2_data(
-        comp="atm", 
-        myvars=["PSL", "U10", "TS", "T", "U", "V", "Z3"], 
-        levels=[1000, 850, 500],
-        testing=True
-    )
-    print(atm_cesm2)
+# def _test_cesm2_atm(dataloader):
+#     atm_cesm2 = dataloader.get_cesm2_data(
+#         comp="atm", 
+#         myvars=["PSL", "U10", "TS", "T", "U", "V", "Z3"], 
+#         levels=[1000, 850, 500],
+#         testing=True
+#     )
+#     print(atm_cesm2)
 
 
-def test_runner():
-    dataloader = DataLoader(
-        root = [
-            "/glade/campaign/univ/uwas0118/scratch/archive/1950_2015/",
-            "/glade/scratch/zespinosa/archive/cesm2.1.3_BHISTcmip6_f09_g17_ERA5_nudge/", 
-            "/glade/scratch/zespinosa/archive/cesm2.1.3_BSSP370cmip6_f09_g17_ERA5_nudge/"
-        ],
-        era5_root="/glade/work/zespinosa/data/era5/monthly"
-    )
+# def test_runner():
+#     dataloader = DataLoader(
+#         root = [
+#             "/glade/campaign/univ/uwas0118/scratch/archive/1950_2015/",
+#             "/glade/scratch/zespinosa/archive/cesm2.1.3_BHISTcmip6_f09_g17_ERA5_nudge/", 
+#             "/glade/scratch/zespinosa/archive/cesm2.1.3_BSSP370cmip6_f09_g17_ERA5_nudge/"
+#         ],
+#         era5_root="/glade/work/zespinosa/data/era5/monthly"
+#     )
 
-    # Test ERA5
-    _test_era5_single_level(dataloader)
-    _test_era5_pressure_level(dataloader)
+#     # Test ERA5
+#     _test_era5_single_level(dataloader)
+#     _test_era5_pressure_level(dataloader)
 
     # Test CESM2
-    _test_cesm2_ice(dataloader)
-    _test_cesm2_ocn(dataloader)
-    _test_cesm2_atm(dataloader)
+    # _test_cesm2_ice(dataloader)
+    # _test_cesm2_ocn(dataloader)
+    # _test_cesm2_atm(dataloader)
 
 # test_runner()
     
