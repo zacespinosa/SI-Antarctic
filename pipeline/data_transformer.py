@@ -1,7 +1,7 @@
 """
 Define a class for manipulating CESM2 and ERA5 data
 
-Author: Zac Espinosa 
+Author: Zac Espinosa
 Date: Nov 9, 2023
 """
 import os
@@ -29,20 +29,20 @@ class DataTransformer():
         save_path (str): path to save data to
         """
         self.save_path = save_path
-        self.skip_vars = ["latitude", "longitude", "lev", "level", "time", "lon", "lat", "lat_bnds", "lon_bnds", "time_bnds", "lev_bnds"]
-        
+        self.skip_vars = ["expver", "latitude", "longitude", "lev", "level", "time", "lon", "lat", "lat_bnds", "lon_bnds", "time_bnds", "lev_bnds"]
+
 
     def regrid(
         self,
-        ds: xr.Dataset = False, 
-        myvars: List[str] = False, 
+        ds: xr.Dataset = False,
+        myvars: List[str] = False,
         grid: np.ndarray = False,
-        save_name: str = "", 
+        save_name: str = "",
         save: bool = False,
     ) -> xr.Dataset:
         """
-        Regrid each variable in ds[myvars] to a new grid 
-        
+        Regrid each variable in ds[myvars] to a new grid
+
         Arguments:
         ----------
         ds (xr.Dataset): xarray dataset containing myvars
@@ -56,7 +56,7 @@ class DataTransformer():
         save_name = os.path.join(self.save_path, save_name)
         if not ds:
             return xr.open_dataset(f"{save_name}.nc")
-            
+
         # If myvars is None, regrid all variables in dataset
         if not myvars:
             myvars = [v for v in list(ds.variables.keys()) if v not in self.skip_vars]
@@ -99,8 +99,8 @@ class DataTransformer():
         save: bool = False,
     ) -> xr.Dataset:
         """
-        Calculate anomalies for each variable in ds[myvars] 
-        
+        Calculate anomalies for each variable in ds[myvars]
+
         Arguments:
         ----------
         ds (xr.Dataset): xarray dataset containing myvars
@@ -123,7 +123,7 @@ class DataTransformer():
 
         if not myvars:
             myvars = [v for v in list(ds.variables.keys()) if v not in self.skip_vars]
-        
+
         ds_clim, ds_anoms = xr.Dataset(), xr.Dataset()
         for cvar in myvars:
             # Calculate anomalies
@@ -140,17 +140,17 @@ class DataTransformer():
 
         return {"anoms": ds_anoms, "clim": ds_clim}
 
-    
+
     def calculate_linear_time_trend(
         self,
-        ds: xr.Dataset = False, 
+        ds: xr.Dataset = False,
         myvars: List[str] = False,
         save_name: str = "",
         save: bool = False,
     ) -> xr.Dataset:
         """
-        Calculate anomalies for each variable in ds[myvars] 
-        
+        Calculate anomalies for each variable in ds[myvars]
+
         Arguments:
         ----------
         ds (xr.Dataset): xarray dataset containing myvars
@@ -186,7 +186,7 @@ class DataTransformer():
 # dataloader = DataLoader(
 #     root = [
 #         "/glade/campaign/univ/uwas0118/scratch/archive/1950_2015/",
-#         "/glade/scratch/zespinosa/archive/cesm2.1.3_BHISTcmip6_f09_g17_ERA5_nudge/", 
+#         "/glade/scratch/zespinosa/archive/cesm2.1.3_BHISTcmip6_f09_g17_ERA5_nudge/",
 #         "/glade/scratch/zespinosa/archive/cesm2.1.3_BSSP370cmip6_f09_g17_ERA5_nudge/"
 #     ])
 
@@ -247,7 +247,7 @@ class DataTransformer():
 #     dataloader = DataLoader(
 #         root = [
 #             "/glade/campaign/univ/uwas0118/scratch/archive/1950_2015/",
-#             "/glade/scratch/zespinosa/archive/cesm2.1.3_BHISTcmip6_f09_g17_ERA5_nudge/", 
+#             "/glade/scratch/zespinosa/archive/cesm2.1.3_BHISTcmip6_f09_g17_ERA5_nudge/",
 #             "/glade/scratch/zespinosa/archive/cesm2.1.3_BSSP370cmip6_f09_g17_ERA5_nudge/"
 #         ],
 #         era5_root="/glade/work/zespinosa/data/era5/monthly"

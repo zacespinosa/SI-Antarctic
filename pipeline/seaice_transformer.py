@@ -146,7 +146,7 @@ ice_cesm2 = dataloader.get_cesm2_data(
 
 cice_transformer = SeaIceTransformer()
 # si_nsidc = cice_transformer.calc_sia_sie(ice_nsidc, hem="SH", prod="NSIDC")
-# TEST CESM 
+# TEST CESM
 #   - SIA and SIE
 print(ice_cesm2)
 si_cesm2 = cice_transformer.calc_sia_sie(ice_cesm2["aice"], hem="SH", prod="CESM")
