@@ -16,6 +16,8 @@ import xskillscore as xscore
 
 # Personal Data Loader
 from data_loader import DataLoader
+# Load local polar_convert module
+from polar_convert import polar_xy_to_lonlat, polar_ij_to_lonlat
 
 class DataTransformer():
     """
@@ -42,6 +44,10 @@ class DataTransformer():
         lat_bnds = ds.lat_bnds
         lon_bnds = ds.lon_bnds
 
+        if lat_bnds.ndim == 3:
+            lat_bnds = lat_bnds.isel(time=0)
+            lon_bnds = lon_bnds.isel(time=0)
+
         # Radius of earth in km
         R = 6371 # Radius of earth in km
 
@@ -50,6 +56,47 @@ class DataTransformer():
 
         return areacello
 
+    def regrid_polarsterographic(
+        self,
+        ds: xr.Dataset = False,
+        myvars: List[str] = False,
+        grid: np.ndarray = False,
+        save_name: str = "",
+        save: bool = False,
+        hem: str = "south",
+    ) -> xr.Dataset:
+
+        save_name = os.path.join(self.save_path, save_name)
+        if not ds:
+            return xr.open_dataset(f"{save_name}.nc")
+            
+        coords = polar_ij_to_lonlat(
+            i=ds.x+1, # Convert meters to km
+            j=ds.y+1, # Convert meters to km
+            grid_size=25,
+            hemisphere=hem,
+        )
+        ds = ds.assign_coords({"longitude": coords[0], "latitude": coords[1]})
+        # If myvars is None, regrid all variables in dataset
+        if not myvars:
+            myvars = [v for v in list(ds.variables.keys()) if v not in self.skip_vars]
+
+        # Use default grid
+        if not grid:
+            lat = np.arange(-89.5, 90.5, 1)
+            lon = np.arange(.5, 360.5, 1)
+            grid = xc.create_grid(lat, lon)
+
+        ds_regrid = []
+        for cvar in myvars:
+            ds_regrid.append(ds.regridder.horizontal(cvar, grid, tool='xesmf', method='bilinear'))
+
+        ds_regrid = xr.merge(ds_regrid)
+
+        if save:
+            ds_regrid.to_netcdf(f"{save_name}.nc")
+
+        return ds_regrid
 
 
     def regrid(

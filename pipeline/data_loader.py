@@ -35,7 +35,7 @@ class DataLoader():
         self.root = root
         self.era5_root = era5_root
 
-    def get_nsidc_data(self, hem="south") -> xr.Dataset:
+    def get_nsidc_data(self, hem="south", native=True) -> xr.Dataset:
         """
         TODO: This should be adaptive for both north and south hemispheres
 
@@ -46,7 +46,18 @@ class DataLoader():
         ----------
         nsidc (xr.Dataset): dataset of NSIDC sea ice concentration data (either north or south)
         """
-        nsidc = xr.open_dataset(f"/glade/work/zespinosa/data/nsidc/daily/{hem}/raw/seaice_conc_monthly_197901-202308.nc")
+        if native:
+            nsidc = xr.open_dataset(f"/glade/work/zespinosa/data/nsidc/daily/{hem}/raw/seaice_conc_monthly_197901-202308.nc")
+        # else:
+        #     if hem != "south": 
+        #         raise ValueError("Only south hemisphere data is available in the remapped version")
+
+        #     nsidc = xr.open_dataset(f"/glade/work/zespinosa/data/remap_nsidc/nsidc_siconc_daily_regrid_25km_1979-01-2022-12.nc")
+        #     lat = np.arange(-89.5, 90.5, 1)
+        #     lon = np.arange(.5, 360.5, 1)
+        #     grid = xc.create_grid(lat, lon)
+        #     nsidc = nsidc.regridder.horizontal("ice", grid, tool='xesmf', method='bilinear')
+        # #     nsidc = nsidc.rename({"ice": "cdr_seaice_conc"})
 
         return nsidc
 

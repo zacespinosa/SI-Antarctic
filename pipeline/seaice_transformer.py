@@ -51,9 +51,12 @@ class SeaIceTransformer():
         
         siObs_regions = []
         for i, (reg, (lonMin, lonMax)) in enumerate(regional_bounds.items()):
+            # Mask everything outside of the region
             siconc_region = siconc.where(((lon >= lonMin) & (lon < lonMax)), np.nan)
-            siObs_regions.append(calc_sia_and_sie_nsidc(siconc_region, grid))
-            
+            # Calculate sia and sie for the region
+            siObs_regions.append(self.calc_sia_and_sie_nsidc(siconc_region, grid, hem="SH", prod="NSIDC"))
+
+        # Merge all regions into one dataset 
         siObs_regions = xr.concat(siObs_regions, dim="region")
         siObs_regions["region"] = list(regional_bounds.keys())
         return siObs_regions
@@ -87,13 +90,16 @@ class SeaIceTransformer():
         """
         assert prod in ["CESM", "NSIDC"], "prod must be either CESM or NSIDC"
 
+        # NSIDC Native Grid
         if area is None and prod == "NSIDC":
+            print("NSIDC Native Grid")
             area = xr.open_dataset("/glade/work/zespinosa/GRIDS/areacello_Bootstrap_polar_stereo_25km_SH.nc")["areacello"]
             area = area.rename({"ygrid": "y", "xgrid": "x"})
             lat, lon = "y", "x"
             div = 1e6
-
-        if area is None and prod == "CESM":
+        # CESM Native Grid
+        elif area is None and prod == "CESM":
+            print("CESM2 Native Grid")
             area = xr.open_dataset("/glade/work/zespinosa/GRIDS/areacello_Ofx_CESM2_historical_r1i1p1f1_gn.nc")["areacello"]
 
             lat_mid_index = int(len(siconc.lat)/2)
@@ -105,8 +111,9 @@ class SeaIceTransformer():
                 area = area[:lat_mid_index, :]
             lat, lon = "nlat", "nlon"
             div = 1e12
-
-        if area is not None:
+        # NSIDC or CESM Regridded
+        elif area is not None:
+            print("CESM2 or NSIDC Regrid")
             if hem == "SH":
                 siconc = siconc.sel(lat=slice(-90, 0))
                 area = area.sel(lat=slice(-90, 0))
@@ -115,6 +122,8 @@ class SeaIceTransformer():
                 area = area.sel(lat=slice(0, 90))
             lat, lon = "lat", "lon"
             div = 1e6
+        else:
+            raise ValueError("something is wrong with area")
 
         # Calculate sia and sie
         sia = ((siconc * area).sum([lat, lon]) / div).rename("sia")
@@ -164,6 +173,14 @@ def test_si_native_nsidc():
     si_nsidc = cice_transformer.calc_sia_sie(ice_nsidc["cdr_seaice_conc"], hem="SH", prod="NSIDC")
     return si_nsidc
 
+
+def test_si_regrid_nsidc():
+    ice_nsidc = dataloader.get_nsidc_data(hem="south")
+    ice_nsidc = datatransformer.regrid_polarsterographic(ds=ice_nsidc, hem="south", save=True, save_name="nsidc_regrid")
+    areacello = datatransformer.get_grid_cell_area(ice_nsidc)
+    si_nsidc = cice_transformer.calc_sia_sie(ice_nsidc["cdr_seaice_conc"], area=areacello, hem="SH", prod="NSIDC")
+    return si_nsidc
+
 def test_si_regrid_cesm2():
     # Verify sia and sie work with CESM2 on Native Grid
     ice_cesm2 = dataloader.get_cesm2_data(
@@ -176,10 +193,20 @@ def test_si_regrid_cesm2():
     si_cesm2 = cice_transformer.calc_sia_sie(ice_cesm2["aice"], area=areacello, hem="SH", prod="CESM")
     return si_cesm2
 
-si_cesm2 = test_si_native_cesm2()
-print(si_cesm2.sia.values)
-si_cesm2 = test_si_regrid_cesm2()
-print(si_cesm2.sia.values)
+##### Test CESM2 #####
+# Native Grid
+# si_cesm2 = test_si_native_cesm2()
+# print(si_cesm2.sie.values)
+# Regrid
+# si_cesm2 = test_si_regrid_cesm2()
+# print(si_cesm2.sie.values)
+# 
+
+##### Test NSIDC #####
+# si_nsidc = test_si_native_nsidc()
+# print(si_nsidc.sie.values[:10])
+# si_nsidc = test_si_regrid_nsidc()
+# print(si_nsidc.sie.values[:10])
 
 # TEST CESM
 #   - Regional SIA and SIE
