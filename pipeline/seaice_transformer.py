@@ -87,12 +87,15 @@ class SeaIceTransformer():
         """
         assert prod in ["CESM", "NSIDC"], "prod must be either CESM or NSIDC"
 
+        if area is None and prod == "NSIDC":
+            area = xr.open_dataset("/glade/work/zespinosa/GRIDS/areacello_Bootstrap_polar_stereo_25km_SH.nc")["areacello"]
+            area = area.rename({"ygrid": "y", "xgrid": "x"})
+            lat, lon = "y", "x"
+            div = 1e6
+
         if area is None and prod == "CESM":
             area = xr.open_dataset("/glade/work/zespinosa/GRIDS/areacello_Ofx_CESM2_historical_r1i1p1f1_gn.nc")["areacello"]
-        if area is None and prod == "NSIDC":
-            area = xr.open_dataset("/glade/work/zespinosa/GRIDS/areacello_Bootstrap_polar_stereo_25km_SH.nc")
 
-        if prod == "CESM":
             lat_mid_index = int(len(siconc.lat)/2)
             if hem == "NH":
                 siconc = siconc[:, lat_mid_index:, :]
@@ -102,8 +105,15 @@ class SeaIceTransformer():
                 area = area[:lat_mid_index, :]
             lat, lon = "nlat", "nlon"
             div = 1e12
-        else:
-            lat, lon = "latitude", "longitude"
+
+        if area is not None:
+            if hem == "SH":
+                siconc = siconc.sel(lat=slice(-90, 0))
+                area = area.sel(lat=slice(-90, 0))
+            else:
+                siconc = siconc.sel(lat=slice(0, 90))
+                area = area.sel(lat=slice(0, 90))
+            lat, lon = "lat", "lon"
             div = 1e6
 
         # Calculate sia and sie
@@ -131,26 +141,47 @@ dataloader = DataLoader(
         "/glade/scratch/zespinosa/archive/cesm2.1.3_BSSP370cmip6_f09_g17_ERA5_nudge/"
     ])
 
-####### TESTING #######
-
-ice_cesm2 = dataloader.get_cesm2_data(
-    comp="ice",
-    myvars=["aice", "daidtt", "daidtd", "dvidtt", "dvidtd", "sithick", "uvel", "vvel"],
-    testing=True
+datatransformer = DataTransformer(
+    save_path='/glade/work/zespinosa/Projects/SI-Antarctic/data'
 )
-# Make regridder return area weights
-# Verify calc sia and sie work with regridder for CESM2
-# Get regional calculations to work with and without regridder
 
-# ice_nsidc = dataloader.get_nsidc_data(hem="south").isel(time=0)
-
+####### TESTING #######
 cice_transformer = SeaIceTransformer()
-# si_nsidc = cice_transformer.calc_sia_sie(ice_nsidc, hem="SH", prod="NSIDC")
+
+# Verify sia and sie work with CESM2 on Native Grid
+def test_si_native_cesm2():
+    ice_cesm2 = dataloader.get_cesm2_data(
+        comp="ice",
+        myvars=["aice", "daidtt", "daidtd", "dvidtt", "dvidtd", "sithick", "uvel", "vvel"],
+        testing=True,
+    )
+    si_cesm2 = cice_transformer.calc_sia_sie(ice_cesm2["aice"], hem="SH", prod="CESM")
+    return si_cesm2
+
+def test_si_native_nsidc():
+    # Verify sia and sie work with NSIDC on Native Grid
+    ice_nsidc = dataloader.get_nsidc_data(hem="south")
+    si_nsidc = cice_transformer.calc_sia_sie(ice_nsidc["cdr_seaice_conc"], hem="SH", prod="NSIDC")
+    return si_nsidc
+
+def test_si_regrid_cesm2():
+    # Verify sia and sie work with CESM2 on Native Grid
+    ice_cesm2 = dataloader.get_cesm2_data(
+        comp="ice",
+        myvars=["aice", "daidtt", "daidtd", "dvidtt", "dvidtd", "sithick", "uvel", "vvel"],
+        testing=True,
+    )
+    ice_cesm2 = datatransformer.regrid(ice_cesm2)
+    areacello = datatransformer.get_grid_cell_area(ice_cesm2)
+    si_cesm2 = cice_transformer.calc_sia_sie(ice_cesm2["aice"], area=areacello, hem="SH", prod="CESM")
+    return si_cesm2
+
+si_cesm2 = test_si_native_cesm2()
+print(si_cesm2.sia.values)
+si_cesm2 = test_si_regrid_cesm2()
+print(si_cesm2.sia.values)
+
 # TEST CESM
-#   - SIA and SIE
-print(ice_cesm2)
-si_cesm2 = cice_transformer.calc_sia_sie(ice_cesm2["aice"], hem="SH", prod="CESM")
-print(si_cesm2)
 #   - Regional SIA and SIE
 # si_cesm2 = cice_transformer.(ice_cesm2["aice"], hem="SH", prod="CESM")
 

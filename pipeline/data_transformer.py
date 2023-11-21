@@ -31,6 +31,26 @@ class DataTransformer():
         self.save_path = save_path
         self.skip_vars = ["expver", "latitude", "longitude", "lev", "level", "time", "lon", "lat", "lat_bnds", "lon_bnds", "time_bnds", "lev_bnds"]
 
+    def get_grid_cell_area(
+        self,
+        ds: xr.Dataset,
+    ) -> xr.Dataset:
+        # Use xcdat to add lat/lon bounds
+        ds = ds.bounds.add_bounds("X")
+        ds = ds.bounds.add_bounds("Y")
+        # Use bounds to calculate grid cell area
+        lat_bnds = ds.lat_bnds
+        lon_bnds = ds.lon_bnds
+
+        # Radius of earth in km
+        R = 6371 # Radius of earth in km
+
+        # A = pi*R^2*(sin(lat2)-sin(lat1))*(lon2-lon1)/180 where longitudes are in degrees and latitudes are in radians
+        areacello = np.pi*(R**2)*(np.sin(np.deg2rad(lat_bnds[:, 1])) - np.sin(np.deg2rad(lat_bnds[:, 0]))) * (lon_bnds[:, 1] - lon_bnds[:, 0])/180
+
+        return areacello
+
+
 
     def regrid(
         self,
