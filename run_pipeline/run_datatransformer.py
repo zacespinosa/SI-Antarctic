@@ -101,7 +101,8 @@ def transform_cesm2_ens():
         era5_root="/glade/work/zespinosa/data/era5/monthly"
     )
 
-    members = ["1980", "1989", "1994", "1998", "1999", "2005", "2007", "2014", "2015", "2018"]
+    #members = ["1980", "1989", "1994", "1998", "1999", "2005", "2007", "2014", "2015", "2018"]
+    members = ["1989", "1994", "1998", "1999", "2005", "2007", "2014", "2015", "2018"]
     for ens_mem in members:
         print("Starting member: ", ens_mem)
         dataloader_ens = DataLoader(
@@ -122,7 +123,7 @@ def transform_cesm2_ens():
             myvars=["aice", "daidtt", "daidtd", "dvidtt", "dvidtd", "sithick", "uvel", "vvel"],
             testing=TESTING,
         )
-        ice_cesm2_enso = dataloader_ens.get_cesm2_data(
+        ice_cesm2_ens = dataloader_ens.get_cesm2_data(
             comp="ice",
             myvars=["aice", "daidtt", "daidtd", "dvidtt", "dvidtd", "sithick", "uvel", "vvel"],
             testing=TESTING,
@@ -130,7 +131,7 @@ def transform_cesm2_ens():
         # Merge ENSO and NO ENSO
         ice_cesm2 = xr.concat([
             ice_cesm2.sel(time=slice("1950-01-15", "2022-12-15")),
-            ice_cesm2_enso,
+            ice_cesm2_ens,
         ], dim="time")
 
         transform_cesm2_data(
@@ -139,15 +140,16 @@ def transform_cesm2_ens():
             save=SAVE,
             save_name=f"{ens_mem}_cesm2_ice_monthly_1950-01_2023-12",
         )
-
+        print(" - finished ice")
+        """
         ##### OCN SST #####
         print("starting ocn sst")
         ocn_sst = dataloader.get_cesm2_data(comp="ocn", myvars=["SST"], testing=TESTING)
-        ocn_sst_enso = dataloader_ens.get_cesm2_data(comp="ocn", myvars=["SST"], testing=TESTING)
+        ocn_sst_ens = dataloader_ens.get_cesm2_data(comp="ocn", myvars=["SST"], testing=TESTING)
         # Merge ENSO and NO ENSO
         ocn_sst = xr.concat([
             ocn_sst.sel(time=slice("1950-01-15", "2022-12-15")),
-            ocn_sst_enso,
+            ocn_sst_ens,
         ], dim="time")
 
         transform_cesm2_data(
@@ -156,6 +158,7 @@ def transform_cesm2_ens():
             save=SAVE,
             save_name=f"{ens_mem}_cesm2_ocn-sst_monthly_1950-01_2023-12",
         )
+        print(" - finished ocn")
 
         ##### ATM #####
         print("starting atm")
@@ -165,7 +168,7 @@ def transform_cesm2_ens():
             levels=[1000, 850, 500],
             testing=TESTING
         )
-        atm_cesm2_enso = dataloader_ens.get_cesm2_data(
+        atm_cesm2_ens = dataloader_ens.get_cesm2_data(
             comp="atm",
             myvars=["PSL", "U10", "TS", "T", "U", "V", "Z3"],
             levels=[1000, 850, 500],
@@ -174,7 +177,7 @@ def transform_cesm2_ens():
         # Merge ENSO and NO ENSO
         atm_cesm2 = xr.concat([
             atm_cesm2.sel(time=slice("1950-01-15", "2022-12-15")),
-            atm_cesm2_enso,
+            atm_cesm2_ens,
         ], dim="time")
 
         transform_cesm2_data(
@@ -183,6 +186,8 @@ def transform_cesm2_ens():
             save=SAVE,
             save_name=f"{ens_mem}_cesm2_atm_monthly_1950-01_2023-12",
         )
+        print(" - finished atm")
+        """
 
 transform_cesm2_ens()
 
