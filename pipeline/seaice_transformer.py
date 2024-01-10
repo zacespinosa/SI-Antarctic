@@ -158,8 +158,8 @@ class SeaIceTransformer():
 
         # Save to netcdf
         if save:
-            si.to_netcdf(f"{self.save_path}/si_{prod}_{hem}_si.nc")
-            si_anoms.to_netcdf(f"{self.save_path}/si_{prod}_{hem}_si-anoms.nc")
+            si.to_netcdf(f"{self.save_path}/si_{prod}_{hem}.nc")
+            si_anoms.to_netcdf(f"{self.save_path}/si_{prod}_{hem}_anoms.nc")
         
         return si, si_anoms
 
@@ -175,19 +175,27 @@ class SeaIceTransformer():
         pass
 
 
-dataloader = DataLoader(
-    root = [
-        "/glade/campaign/univ/uwas0118/scratch/archive/1950_2015/",
-        "/glade/derecho/scratch/zespinosa/archive/cesm2.1.3_BHISTcmip6_f09_g17_ERA5_nudge/", 
-        "/glade/derecho/scratch/zespinosa/archive/cesm2.1.3_BSSP370cmip6_f09_g17_ERA5_nudge/"
-    ])
+# dataloader = DataLoader(
+#     root = [
+#         "/glade/campaign/univ/uwas0118/scratch/archive/1950_2015/",
+#         "/glade/derecho/scratch/zespinosa/archive/cesm2.1.3_BHISTcmip6_f09_g17_ERA5_nudge/", 
+#         "/glade/derecho/scratch/zespinosa/archive/cesm2.1.3_BSSP370cmip6_f09_g17_ERA5_nudge/"
+#     ])
 
-datatransformer = DataTransformer(
-    save_path='/glade/work/zespinosa/Projects/SI-Antarctic/data'
-)
+# dataloader_enso = DataLoader(
+#     root = [
+#         "/glade/derecho/scratch/zespinosa/archive/NO_ENSO_cesm2.1.3_BSSP370cmip6_f09_g17_ERA5_nudge"
+#     ],
+#     era5_root="/glade/work/zespinosa/data/era5/monthly"
+# )
 
-####### TESTING #######
-cice_transformer = SeaIceTransformer()
+
+# datatransformer = DataTransformer(
+#     save_path='/glade/work/zespinosa/Projects/SI-Antarctic/data'
+# )
+
+# ####### TESTING #######
+# cice_transformer = SeaIceTransformer()
 
 # Verify sia and sie work with CESM2 on Native Grid
 def test_si_native_cesm2():
@@ -228,6 +236,17 @@ def test_si_regrid_cesm2():
         myvars=["aice", "daidtt", "daidtd", "dvidtt", "dvidtd", "sithick", "uvel", "vvel"],
         testing=False,
     )
+    ice_cesm2_enso = dataloader_enso.get_cesm2_data(
+        comp="ice",
+        myvars=["aice", "daidtt", "daidtd", "dvidtt", "dvidtd", "sithick", "uvel", "vvel"],
+        testing=False,
+    )
+    # Merge ENSO and NO ENSO
+    ice_cesm2 = xr.concat([
+        ice_cesm2.sel(time=slice("1950-01-15", "2022-12-15")),
+        ice_cesm2_enso,
+    ], dim="time")
+
     ice_cesm2 = datatransformer.regrid(ice_cesm2)
     areacello = datatransformer.get_grid_cell_area(ice_cesm2)
     # Regions
@@ -243,7 +262,7 @@ def test_si_regrid_cesm2():
 # print(si_cesm2.sie.values)
 # Regrid
 # test_si_regrid_nsidc()
-test_si_regrid_cesm2()
+# test_si_regrid_cesm2()
 # si_cems2, si_cesm2_anoms = test_si_regrid_cesm2()
 # print(si_cesm2.sie.values)
 # 

@@ -9,6 +9,8 @@ __pycache__/
 .gitignore
 
 # Distribution / packaging
+*.e
+*.o
 .Python
 build/
 develop-eggs/

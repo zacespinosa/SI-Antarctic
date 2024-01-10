@@ -187,7 +187,7 @@ class DataLoader():
         if comp == "ice":
             cesm2 = cesm2.rename({"TLON": "lon", "TLAT": "lat", "nj": "nlat", "ni": "nlon"})
         if comp == "ocn":
-            cesm2 = cesm2.rename({"TLONG": "lon", "TLAT": "lat"}) 
+            cesm2 = cesm2.rename({"TLONG": "lon", "TLAT": "lat"})
 
         if comp == "ocn" or comp == "ice":
             myvars = [*myvars, "nlat", "nlon"]
