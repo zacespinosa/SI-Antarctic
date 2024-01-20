@@ -160,7 +160,7 @@ class DataTransformer():
         self,
         ds: xr.Dataset = False,
         myvars: List[str] = False,
-        ref_period: Tuple[str, str] = ("2000-01-01", "2020-01-01"),
+        ref_period: Tuple[str, str] = ("1980-01-01", "2020-01-01"),
         freq: str ="month",
         save_name: str = "",
         save: bool = False,
