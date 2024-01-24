@@ -157,7 +157,7 @@ class DataLoader():
         """
         assert myvars != None, "myvars must be a list containing one or more variable name (e.g. ['aice', 'sithick'])"
 
-        if comp == "ice" or (comp == "ocn" and "SST" not in myvars): 
+        if comp == "ice" or (comp == "ocn" and "SST" not in myvars):
             h = "h"
         elif comp == "atm":
             h = "h0"
@@ -172,13 +172,14 @@ class DataLoader():
             files += cfiles
         files = sorted(files)
 
-        # Remove files that contain SST data from the ocean component and we're not interested in SST databbb
+        # Remove files that contain SST data from the ocean component and we're not interested in SST data
         if comp == "ocn" and h == "h":
             files = [f for f in files if ("nday1" not in f) and ("once" not in f)]
 
         print(f"Loading {comp} data from {len(files)} files...")
         if testing: files = files[:30]
         print(files[:5])
+
 
         # Lazy load data
         cesm2 = xr.open_mfdataset(files, coords="minimal", chunks={"time": 1, "nj": 384, "ni": 320})

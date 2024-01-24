@@ -1,11 +1,11 @@
 #!/bin/bash -l
-#PBS -N atm_ensemble_transformer
+#PBS -N ocn_mxl
 #PBS -A UWAS0118
-#PBS -q main
+#PBS -q casper
 #PBS -l walltime=12:00:00
 #PBS -l select=1:ncpus=1:mpiprocs=1
-#PBS -o atm_ens_run_transformer.o
-#PBS -e atm_ens_run_transformer.e
+#PBS -o mxl_ens_run_transformer.o
+#PBS -e mxl_ens_run_transformer.e
 
 
 module load conda

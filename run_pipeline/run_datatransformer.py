@@ -18,8 +18,8 @@ from run_dataloader import era5_single_level, era5_pressure_level
 
 REF_PERIOD = ("1980-01-01", "2020-01-01")
 # REF_PERIOD = ("1950-01-01", "1950-01-15")
-TESTING = False
-SAVE = True
+TESTING = True
+SAVE = False
 
 def transform_cesm2_data(datatransformer, ds, save, save_name):
     print("starting regrid")
@@ -69,6 +69,26 @@ def transform_era5_data(datatransformer, era5_data, test, save, cvar):
         save=True,
         save_name=f"ERA5_monthly_1979-01_2023-12_{cvar}",
     )
+
+dataloader = DataLoader(
+    root = [
+        "/glade/campaign/univ/uwas0118/scratch/archive/1950_2015/",
+        "/glade/derecho/scratch/zespinosa/archive/cesm2.1.3_BHISTcmip6_f09_g17_ERA5_nudge/",
+        "/glade/derecho/scratch/zespinosa/archive/cesm2.1.3_BSSP370cmip6_f09_g17_ERA5_nudge/"
+    ],
+    era5_root="/glade/work/zespinosa/data/era5/monthly"
+)
+print("starting ocn mxl")
+ocn_mxl = dataloader.get_cesm2_data(comp="ocn", myvars=["HMXL"], testing=TESTING)
+print(ocn_mxl)
+import pdb; pdb.set_trace()
+datatransformer = DataTransformer(save_path='/glade/work/zespinosa/Projects/SI-Antarctic/data/')
+transform_cesm2_data(
+    datatransformer=datatransformer,
+    ds=ocn_mxl,
+    save=SAVE,
+    save_name="cesm2_ocn-mxl_monthly_1950-01_2023-12",
+)
 
 
 
@@ -243,7 +263,7 @@ def process_atm(dataloader, dataloader_ens, datatransformer, ens_mem):
     )
     print(" - finished atm")
 
-transform_cesm2_ens()
+# transform_cesm2_ens()
 
 
 ########################## CESM2 NO ENSO ####################################
