@@ -64,6 +64,7 @@ class DataTransformer():
         save_name: str = "",
         save: bool = False,
         hem: str = "south",
+        prod: str = "CESM2",
     ) -> xr.Dataset:
 
         save_name = os.path.join(self.save_path, save_name)
@@ -93,11 +94,28 @@ class DataTransformer():
 
         ds_regrid = xr.merge(ds_regrid)
 
+        # Fill in holes in satellite data
+        if prod == "NSIDC":
+            ds_regrid["cdr_seaice_conc"] = self.fill_satellite_holes(ds_regrid["cdr_seaice_conc"])
+
         if save:
             ds_regrid.to_netcdf(f"{save_name}.nc")
 
         return ds_regrid
 
+    def fill_satellite_holes(self, da) -> xr.Dataset:
+        """
+        Fill in holes in satellite data
+        Arguments:
+        ----------
+        Returns:
+        ----------
+        """
+        # Replace cdr_seaice_conc during 1987-12 and 1988-01 with nans
+        da = da.where(da.time != np.datetime64("1987-12"), np.nan)
+        da = da.where(da.time != np.datetime64("1988-01"), np.nan)
+
+        return da
 
     def regrid(
         self,

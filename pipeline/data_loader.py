@@ -47,7 +47,8 @@ class DataLoader():
         nsidc (xr.Dataset): dataset of NSIDC sea ice concentration data (either north or south)
         """
         if native:
-            nsidc = xr.open_dataset(f"/glade/work/zespinosa/data/nsidc/daily/{hem}/raw/seaice_conc_monthly_197901-202308.nc")
+            nsidc = xr.open_dataset(f"/glade/work/zespinosa/data/nsidc/daily/{hem}/raw/seaice_conc_monthly_197901-202309.nc")
+            # nsidc = xr.open_dataset(f"/glade/work/zespinosa/data/nsidc/daily/{hem}/raw/seaice_conc_monthly_197901-202308.nc")
         # else:
         #     if hem != "south": 
         #         raise ValueError("Only south hemisphere data is available in the remapped version")

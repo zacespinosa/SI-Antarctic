@@ -78,6 +78,7 @@ dataloader = DataLoader(
     ],
     era5_root="/glade/work/zespinosa/data/era5/monthly"
 )
+
 print("starting ocn mxl")
 ocn_mxl = dataloader.get_cesm2_data(comp="ocn", myvars=["HMXL"], testing=TESTING)
 print(ocn_mxl)
@@ -183,7 +184,7 @@ def process_seaice(dataloader, dataloader_ens, datatransformer, cice_transformer
         myvars=["aice", "daidtt", "daidtd", "dvidtt", "dvidtd", "sithick", "uvel", "vvel"],
         testing=TESTING,
     )
-    # Merge ENSO and NO ENSO
+    # Merge ENS member
     ice_cesm2 = xr.concat([
         ice_cesm2.sel(time=slice("1950-01-15", "2022-12-15")),
         ice_cesm2_ens,
