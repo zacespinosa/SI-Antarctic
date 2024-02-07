@@ -31,7 +31,7 @@ class DataTransformer():
         save_path (str): path to save data to
         """
         self.save_path = save_path
-        self.skip_vars = ["expver", "latitude", "longitude", "lev", "level", "time", "lon", "lat", "lat_bnds", "lon_bnds", "time_bnds", "lev_bnds"]
+        self.skip_vars = ["z_t_bnds", "z_t", "expver", "latitude", "longitude", "lev", "level", "time", "lon", "lat", "lat_bnds", "lon_bnds", "time_bnds", "lev_bnds"]
 
     def get_grid_cell_area(
         self,
@@ -205,12 +205,16 @@ class DataTransformer():
 
         # Add time bounds
         ds = ds.bounds.add_bounds("T")
+        print(ds)
 
         if not myvars:
             myvars = [v for v in list(ds.variables.keys()) if v not in self.skip_vars]
 
+        print(myvars)
+
         ds_clim, ds_anoms = xr.Dataset(), xr.Dataset()
         for cvar in myvars:
+            print(cvar)
             # Calculate anomalies
             ds_anoms[cvar] = ds.temporal.departures(cvar, freq=freq, reference_period=ref_period)[cvar]
             # Calculate Climatology

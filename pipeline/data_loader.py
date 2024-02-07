@@ -175,15 +175,21 @@ class DataLoader():
 
         # Remove files that contain SST data from the ocean component and we're not interested in SST data
         if comp == "ocn" and h == "h":
-            files = [f for f in files if ("nday1" not in f) and ("once" not in f)]
+            files = [f for f in files if ("nday1" not in f) and ("once" not in f) and ("nyear1" not in f) and ("ecosys" not in f)]
 
         print(f"Loading {comp} data from {len(files)} files...")
         if testing: files = files[:30]
         print(files[:5])
 
+        # Drop all files before 1979
+        files = [f for f in files if int(f.split(".")[-2][:4]) >= 1979]
+
+        # Drop all unwanted variables prior to lazy loading
+        drop_vars = list(xr.open_dataset(files[0]).variables)
+        drop_vars = [cvar for cvar in drop_vars if cvar not in ["z_t", "time", "TLONG", "TLAT", "nlat", "nlon", "TLON" ,*myvars]]
 
         # Lazy load data
-        cesm2 = xr.open_mfdataset(files, coords="minimal", chunks={"time": 1, "nj": 384, "ni": 320})
+        cesm2 = xr.open_mfdataset(files, coords="minimal", parallel=True, drop_variables=drop_vars, chunks={"time": 1, "nj": 384, "ni": 320})
 
         # Rename lat and lon coordinates (annoyingly, this is different for each component)
         if comp == "ice":
@@ -196,9 +202,9 @@ class DataLoader():
         if comp == "atm":
             myvars = ["lev", *myvars]
 
-        # Drop all unwanted variables
-        drop_vars = [cvar for cvar in list(cesm2.variables.keys()) if cvar not in ["time", "lon", "lat" ,*myvars]]
-        cesm2 = cesm2.drop_vars(drop_vars)
+        # # Drop all unwanted variables
+        # drop_vars = [cvar for cvar in list(cesm2.variables.keys()) if cvar not in ["z_t", "time", "lon", "lat" ,*myvars]]
+        # cesm2 = cesm2.drop_vars(drop_vars)
 
         cesm2["time"] = [pd.to_datetime(f"{t.year}-{t.month}-15") - pd.DateOffset(months=1) for t in cesm2.time.values]
         cesm2['time'].encoding['calendar'] = 'standard'
@@ -206,6 +212,11 @@ class DataLoader():
         # Select levels for atm component
         if levels != None:
             cesm2 = cesm2.sel(lev=levels, method="nearest")
+
+        # Select only the first 1000m of the ocean (native units in cm so multiply by 1e2)
+        if "z_t" in list(cesm2.variables.keys()):
+            cesm2 = cesm2.sel(z_t = slice(0, 1000*1e2))
+        print(cesm2)
 
         return cesm2
 
