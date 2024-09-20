@@ -18,7 +18,6 @@ import xskillscore as xscore
 from data_loader import DataLoader
 # Load local polar_convert module
 from polar_convert import polar_xy_to_lonlat, polar_ij_to_lonlat
-
 class DataTransformer():
     """
     This defines a class DataTransformer.
@@ -31,7 +30,7 @@ class DataTransformer():
         save_path (str): path to save data to
         """
         self.save_path = save_path
-        self.skip_vars = ["z_t_bnds", "z_t", "expver", "latitude", "longitude", "lev", "level", "time", "lon", "lat", "lat_bnds", "lon_bnds", "time_bnds", "lev_bnds"]
+        self.skip_vars = ["x", "y", "z_t_bnds", "z_t", "expver", "latitude", "longitude", "lev", "level", "time", "lon", "lat", "lat_bnds", "lon_bnds", "time_bnds", "lev_bnds"]
 
     def get_grid_cell_area(
         self,
@@ -77,6 +76,7 @@ class DataTransformer():
             grid_size=25,
             hemisphere=hem,
         )
+
         ds = ds.assign_coords({"longitude": coords[0], "latitude": coords[1]})
         # If myvars is None, regrid all variables in dataset
         if not myvars:

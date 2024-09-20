@@ -32,6 +32,7 @@ class SeaIceTransformer():
         polar=False,
         save=False,
         prod="NSIDC",
+        save_name="",
     ):
         if polar:
             lon, _ = polar_xy_to_lonlat(
@@ -73,8 +74,8 @@ class SeaIceTransformer():
 
         # Save to netcdf
         if save:
-            si_regions.to_netcdf(f"{self.save_path}/si_regions_{prod}.nc")
-            si_regions_anoms.to_netcdf(f"{self.save_path}/si_regions_{prod}_anoms.nc")
+            si_regions.to_netcdf(f"{self.save_path}/si_regions_{prod}{save_name}.nc")
+            si_regions_anoms.to_netcdf(f"{self.save_path}/si_regions_{prod}_anoms{save_name}.nc")
 
         return si_regions, si_regions_anoms
 
@@ -86,6 +87,7 @@ class SeaIceTransformer():
         hem: str = "NH",
         prod: str = "CESM",
         save: bool = False,
+        save_name: str = "",
     ) -> Tuple[xr.Dataset, xr.Dataset]:
         """
         Calc SIE and SIA for CESM2 and NSIDC data.
@@ -100,7 +102,10 @@ class SeaIceTransformer():
         # NSIDC Native Grid
         if area is None and prod == "NSIDC":
             print("NSIDC Native Grid")
-            area = xr.open_dataset("/glade/work/zespinosa/GRIDS/areacello_Bootstrap_polar_stereo_25km_SH.nc")["areacello"]
+            if hem == "NH":
+                area = xr.open_dataset("/glade/work/zespinosa/GRIDS/areacello_CDR_Bootstrap_polar_stereo_25km_NH.nc")["areacello"]
+            else:
+                area = xr.open_dataset("/glade/work/zespinosa/GRIDS/areacello_Bootstrap_polar_stereo_25km_SH.nc")["areacello"]
             area = area.rename({"ygrid": "y", "xgrid": "x"})
             lat, lon = "y", "x"
             div = 1e6
@@ -157,8 +162,8 @@ class SeaIceTransformer():
 
         # Save to netcdf
         if save:
-            si.to_netcdf(f"{self.save_path}/si_{prod}_{hem}.nc")
-            si_anoms.to_netcdf(f"{self.save_path}/si_{prod}_{hem}_anoms.nc")
+            si.to_netcdf(f"{self.save_path}/si_{prod}_{hem}{save_name}.nc")
+            si_anoms.to_netcdf(f"{self.save_path}/si_{prod}_{hem}_anoms{save_name}.nc")
         
         return si, si_anoms
 
@@ -187,13 +192,13 @@ class SeaIceTransformer():
 
         return da
 
-
-dataloader = DataLoader(
-    root = [
-        "/glade/campaign/univ/uwas0118/scratch/archive/1950_2015/",
-        "/glade/derecho/scratch/zespinosa/archive/cesm2.1.3_BHISTcmip6_f09_g17_ERA5_nudge/", 
-        "/glade/derecho/scratch/zespinosa/archive/cesm2.1.3_BSSP370cmip6_f09_g17_ERA5_nudge/"
-    ])
+################## TESTING BELOW ##################
+# dataloader = DataLoader(
+#     root = [
+#         "/glade/campaign/univ/uwas0118/scratch/archive/1950_2015/",
+#         "/glade/derecho/scratch/zespinosa/archive/cesm2.1.3_BHISTcmip6_f09_g17_ERA5_nudge/", 
+#         "/glade/derecho/scratch/zespinosa/archive/cesm2.1.3_BSSP370cmip6_f09_g17_ERA5_nudge/"
+#     ])
 
 # dataloader_enso = DataLoader(
 #     root = [
@@ -203,12 +208,11 @@ dataloader = DataLoader(
 # )
 
 
-datatransformer = DataTransformer(
-    save_path='/glade/work/zespinosa/Projects/SI-Antarctic/data'
-)
+# datatransformer = DataTransformer(
+#     save_path='/glade/work/zespinosa/Projects/SI-Antarctic/data'
+# )
 
-# ####### TESTING #######
-cice_transformer = SeaIceTransformer()
+# cice_transformer = SeaIceTransformer()
 
 # Verify sia and sie work with CESM2 on Native Grid
 def test_si_native_cesm2():
@@ -222,35 +226,52 @@ def test_si_native_cesm2():
 
 def test_si_native_nsidc():
     # Verify sia and sie work with NSIDC on Native Grid
-    ice_nsidc = dataloader.get_nsidc_data(hem="south")
-    si_nsidc = cice_transformer.calc_sia_sie(ice_nsidc["cdr_seaice_conc"], hem="SH", prod="NSIDC")
-    return si_nsidc
+    ice_nsidc = dataloader.get_nsidc_data(hem="north")
+    si_nsidc, si_nsidc_anoms = cice_transformer.calc_sia_sie(ice_nsidc["cdr_seaice_conc"], hem="NH", prod="NSIDC")
+    return si_nsidc, si_nsidc_anoms
 
 def test_si_regrid_nsidc():
     SAVE = True
+    # Get climate record data
     ice_nsidc = dataloader.get_nsidc_data(hem="south")
-    ice_nsidc = datatransformer.regrid_polarsterographic(ds=ice_nsidc, hem="south", save=SAVE, save_name="nsidc_regrid", prod="NSIDC")
+    old = xr.open_dataset(f"/glade/work/zespinosa/data/nsidc/daily/south/raw/seaice_conc_monthly_197901-202309.nc")
+    ice_nsidc = ice_nsidc.cdr_seaice_conc.to_dataset()
+    ice_nsidc = ice_nsidc.rename({"xgrid": "x", "ygrid": "y"})
+    ice_nsidc["x"] = old.x
+    ice_nsidc["y"] = old.y
+
+    # Get realtime data
+    ice_nsidc_realtime = dataloader.get_nsidc_realtime_data(hem="south").load()
+    ice_nsidc_realtime["x"] = ice_nsidc.x
+    ice_nsidc_realtime["y"] = ice_nsidc.y
+
+    # Add realtime data to climate record
+    ice_nsidc = xr.concat([ice_nsidc, ice_nsidc_realtime], dim="time")
+
+    # Regrid from polar stereographic to lat/lon
+    ice_nsidc_regrid = datatransformer.regrid_polarsterographic(ds=ice_nsidc, hem="south", save=SAVE, save_name="nsidc_regrid_realtime_2024jja", prod="NSIDC")
 
     # Get anomalies
     REF_PERIOD = ("1980-01-01", "2020-01-01")
     ice_nsidc_anoms = datatransformer.calculate_anoms_climatology(
-        ds=ice_nsidc,
+        ds=ice_nsidc_regrid,
         ref_period=REF_PERIOD,
-        save_name="nsidc_regrid",
+        save_name="nsidc_regrid_realtime_2024jja",
         save=SAVE,
     )
 
     # Get Grid Cell Area
-    areacello = datatransformer.get_grid_cell_area(ice_nsidc)
+    areacello = datatransformer.get_grid_cell_area(ice_nsidc_regrid)
     # Regions
-    si_nsidc_regions, si_nsidc_regions_anoms = cice_transformer.calc_regions(ice_nsidc["cdr_seaice_conc"], areacello, prod="NSIDC", polar=False, save=SAVE)
+    # si_nsidc_regions, si_nsidc_regions_anoms = cice_transformer.calc_regions(ice_nsidc["cdr_seaice_conc"], grid=areacello, prod="NSIDC", polar=False, save=SAVE, save_name="_realtime_2024jja")
 
     # Raw NSIDC
-    si_nsidc, si_nsidc_anoms = cice_transformer.calc_sia_sie(ice_nsidc["cdr_seaice_conc"], area=areacello, hem="SH", prod="NSIDC", save=SAVE)
+    si_nsidc, si_nsidc_anoms = cice_transformer.calc_sia_sie(ice_nsidc_regrid["cdr_seaice_conc"], area=areacello, hem="SH", prod="NSIDC", save=SAVE, save_name="_realtime_2024jja_regrid")
+    # si_nsidc, si_nsidc_anoms = cice_transformer.calc_sia_sie(ice_nsidc["cdr_seaice_conc"], hem="SH", prod="NSIDC", save=SAVE, save_name="_realtime_2024jja")
 
-    return si_nsidc_regions, si_nsidc_regions_anoms
+    # return si_nsidc_regions, si_nsidc_regions_anoms
 
-test_si_regrid_nsidc()
+# test_si_regrid_nsidc()
 
 def test_si_regrid_cesm2():
     # Verify sia and sie work with CESM2 on Native Grid
@@ -292,15 +313,17 @@ def test_si_regrid_cesm2():
 
 ##### Test NSIDC #####
 # test_si_regrid_nsidc()
-# si_nsidc = test_si_native_nsidc()
+# si_nsidc, si_nsidc_anoms = test_si_native_nsidc()
+# si_nsidc.to_netcdf(f"/glade/work/zespinosa/Projects/SeaIce4_Ch10/si_nsidc_NH_197901-202309.nc")
+# print(si_nsidc)
 # print(si_nsidc.sie.values[:10])
 # si_nsidc = test_si_regrid_nsidc()
 # print(si_nsidc.sie.values[:10])
+# test_si_regrid_nsidc()
 
 # TEST CESM
 #   - Regional SIA and SIE
 # si_cesm2 = cice_transformer.(ice_cesm2["aice"], hem="SH", prod="CESM")
-
 # ice_cesm2 = dataloader.regrid(ice_cesm2)
 # ice_cesm2_trend = dataloader.calculate_linear_time_trend(ice_cesm2, myvars=["aice"])
 # ice_cesm2_ac = dataloader.calculate_anoms_climatology(ice_cesm2, ref_period=("1950-01-01", "1950-02-01"))

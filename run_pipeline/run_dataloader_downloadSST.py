@@ -17,6 +17,8 @@ from data_loader import DataLoader
 def era5_single_level(dataloader):
     myvars = [
         'sea_surface_temperature',
+        'evaporation', 
+        'total_precipitation',
     ]
     all_vars = []
     for cvar in myvars:
@@ -28,7 +30,7 @@ def era5_single_level(dataloader):
                 "months": ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10","11", "12"],
                 "area":[90, -180, -90, 180],
                 "time":"00:00",
-                "save_name": f"ERA5_monthly_1979-01_2023-12_SSTs.nc"
+                "save_name": f"/glade/derecho/scratch/zespinosa/data/ERA5/monthly/ERA5_monthly_1979-01_2023-12_{cvar}.nc"
             }
         )
         all_vars.append(era5_data)

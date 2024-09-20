@@ -79,92 +79,93 @@ dataloader = DataLoader(
     era5_root="/glade/work/zespinosa/data/era5/monthly"
 )
 
-print("starting ocn mxl")
-ocn_mxl = dataloader.get_cesm2_data(comp="ocn", myvars=["HMXL"], testing=TESTING)
-print(ocn_mxl)
-import pdb; pdb.set_trace()
-datatransformer = DataTransformer(save_path='/glade/work/zespinosa/Projects/SI-Antarctic/data/')
-transform_cesm2_data(
-    datatransformer=datatransformer,
-    ds=ocn_mxl,
-    save=SAVE,
-    save_name="cesm2_ocn-mxl_monthly_1950-01_2023-12",
-)
+# print("starting ocn mxl")
+# ocn_mxl = dataloader.get_cesm2_data(comp="ocn", myvars=["HMXL"], testing=TESTING)
+# print(ocn_mxl)
+# import pdb; pdb.set_trace()
+# datatransformer = DataTransformer(save_path='/glade/work/zespinosa/Projects/SI-Antarctic/data/')
+# transform_cesm2_data(
+#     datatransformer=datatransformer,
+#     ds=ocn_mxl,
+#     save=SAVE,
+#     save_name="cesm2_ocn-mxl_monthly_1950-01_2023-12",
+# )
 
 
 
 ##### ERA5 #####
 # Load data
 # era5_single = era5_single_level(dataloader)
+era5_single = xr.open_dataset("/glade/work/zespinosa/data/era5/monthly/ERA5_monthly_1979-01_2023-12_SSTs.nc")
 # era5_pressure = era5_pressure_level(dataloader)
 
-# era5_single = era5_single.isel(expver=0).squeeze()
+era5_single = era5_single.isel(expver=0).squeeze()
 # era5_pressure = era5_pressure.isel(expver=0).squeeze()
 
-# era5_single = era5_single.drop('expver')
+era5_single = era5_single.drop('expver')
 # era5_pressure = era5_pressure.drop('expver')
-# print(era5_single)
+print(era5_single)
 # print(era5_pressure)
 
 
-# # Start Transform
-# print("Starting single level")
+# Start Transform
+print("Starting single level")
 # transform_era5_data(era5_single, test=False, save=True, cvar="full-single")
 # print("Starting pressure level")
 # transform_era5_data(era5_pressure, test=False, save=True, cvar="full-pressure")
 
 ########################## CESM2 Persistence Ensemble ####################################
-def transform_cesm2_ens():
-    dataloader = DataLoader(
-        root = [
-            "/glade/campaign/univ/uwas0118/scratch/archive/1950_2015/",
-            "/glade/derecho/scratch/zespinosa/archive/cesm2.1.3_BHISTcmip6_f09_g17_ERA5_nudge/",
-            "/glade/derecho/scratch/zespinosa/archive/cesm2.1.3_BSSP370cmip6_f09_g17_ERA5_nudge/"
-        ],
-        era5_root="/glade/work/zespinosa/data/era5/monthly"
-    )
+# def transform_cesm2_ens():
+#     dataloader = DataLoader(
+#         root = [
+#             "/glade/campaign/univ/uwas0118/scratch/archive/1950_2015/",
+#             "/glade/derecho/scratch/zespinosa/archive/cesm2.1.3_BHISTcmip6_f09_g17_ERA5_nudge/",
+#             "/glade/derecho/scratch/zespinosa/archive/cesm2.1.3_BSSP370cmip6_f09_g17_ERA5_nudge/"
+#         ],
+#         era5_root="/glade/work/zespinosa/data/era5/monthly"
+#     )
 
-    # members = ["1980", "1985", "1989", "1990", "1993", "1994", "1998", "1999", "2000", "2003", "2004", "2005", "2006", "2007", "2009", "2012", "2013", "2014", "2016", "2018", "2020", "2021"]
-    # members = ["2000", "2003", "2004", "2005", "2006"]
-    members = ["2018", "2020", "2021"]
-    for ens_mem in members:
-        print("Starting member: ", ens_mem)
-        dataloader_ens = DataLoader(
-            root = [
-                f"/glade/derecho/scratch/zespinosa/archive/{ens_mem}_cesm2.1.3_BSSP370cmip6_f09_g17_ERA5_nudge"
-            ],
-            era5_root="/glade/work/zespinosa/data/era5/monthly"
-        )
+#     # members = ["1980", "1985", "1989", "1990", "1993", "1994", "1998", "1999", "2000", "2003", "2004", "2005", "2006", "2007", "2009", "2012", "2013", "2014", "2016", "2018", "2020", "2021"]
+#     # members = ["2000", "2003", "2004", "2005", "2006"]
+#     members = ["2018", "2020", "2021"]
+#     for ens_mem in members:
+#         print("Starting member: ", ens_mem)
+#         dataloader_ens = DataLoader(
+#             root = [
+#                 f"/glade/derecho/scratch/zespinosa/archive/{ens_mem}_cesm2.1.3_BSSP370cmip6_f09_g17_ERA5_nudge"
+#             ],
+#             era5_root="/glade/work/zespinosa/data/era5/monthly"
+#         )
 
-        datatransformer = DataTransformer(
-            save_path=f'/glade/work/zespinosa/Projects/SI-Antarctic/data/persistence_ensemble/{ens_mem}',
-        )
+#         datatransformer = DataTransformer(
+#             save_path=f'/glade/work/zespinosa/Projects/SI-Antarctic/data/persistence_ensemble/{ens_mem}',
+#         )
 
-        cice_transformer = SeaIceTransformer(
-            save_path=f'/glade/work/zespinosa/Projects/SI-Antarctic/data/persistence_ensemble/{ens_mem}',
-        )
+#         cice_transformer = SeaIceTransformer(
+#             save_path=f'/glade/work/zespinosa/Projects/SI-Antarctic/data/persistence_ensemble/{ens_mem}',
+#         )
 
-        # process_seaice(
-        #     dataloader=dataloader,
-        #     dataloader_ens=dataloader_ens,
-        #     datatransformer=datatransformer,
-        #     cice_transformer=cice_transformer,
-        #     ens_mem=ens_mem
-        # )
+#         # process_seaice(
+#         #     dataloader=dataloader,
+#         #     dataloader_ens=dataloader_ens,
+#         #     datatransformer=datatransformer,
+#         #     cice_transformer=cice_transformer,
+#         #     ens_mem=ens_mem
+#         # )
 
-        # process_ocean(
-        #     dataloader=dataloader,
-        #     dataloader_ens=dataloader_ens,
-        #     datatransformer=datatransformer,
-        #     ens_mem=ens_mem
-        # )
+#         # process_ocean(
+#         #     dataloader=dataloader,
+#         #     dataloader_ens=dataloader_ens,
+#         #     datatransformer=datatransformer,
+#         #     ens_mem=ens_mem
+#         # )
 
-        process_atm(
-            dataloader=dataloader,
-            dataloader_ens=dataloader_ens,
-            datatransformer=datatransformer,
-            ens_mem=ens_mem
-        )
+#         process_atm(
+#             dataloader=dataloader,
+#             dataloader_ens=dataloader_ens,
+#             datatransformer=datatransformer,
+#             ens_mem=ens_mem
+#         )
 
 
 ##### ICE #####

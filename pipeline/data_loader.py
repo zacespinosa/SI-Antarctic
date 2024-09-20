@@ -35,6 +35,18 @@ class DataLoader():
         self.root = root
         self.era5_root = era5_root
 
+    def get_nsidc_realtime_data(self, hem="south", dir="/glade/work/zespinosa/data/nsidc/near-real-time") -> xr.Dataset:
+        hem = "S" if hem == "south" else "N"
+        ice = xr.open_mfdataset(glob(os.path.join(dir, f"NSIDC0081_SEAICE_PS_{hem}25km_*_v2.0.nc")))[["F18_ICECON"]]
+        # Rename NRT product to CDR so that we can calculate anomalies
+        ice = ice.rename({"F18_ICECON": "cdr_seaice_conc"})
+        # Where greater than 1 replace with np.nan
+        ice = ice.where(ice.cdr_seaice_conc <= 1)
+        ice = ice.where(ice.cdr_seaice_conc >= 0)
+        ice = ice.resample(time="1M").mean(skipna=True)
+
+        return ice
+
     def get_nsidc_data(self, hem="south", native=True) -> xr.Dataset:
         """
         TODO: This should be adaptive for both north and south hemispheres
@@ -47,18 +59,18 @@ class DataLoader():
         nsidc (xr.Dataset): dataset of NSIDC sea ice concentration data (either north or south)
         """
         if native:
-            nsidc = xr.open_dataset(f"/glade/work/zespinosa/data/nsidc/daily/{hem}/raw/seaice_conc_monthly_197901-202309.nc")
-            # nsidc = xr.open_dataset(f"/glade/work/zespinosa/data/nsidc/daily/{hem}/raw/seaice_conc_monthly_197901-202308.nc")
-        # else:
-        #     if hem != "south": 
-        #         raise ValueError("Only south hemisphere data is available in the remapped version")
+            # nsidc = xr.open_dataset(f"/glade/work/zespinosa/data/nsidc/daily/{hem}/raw/seaice_conc_monthly_197901-202309.nc")
+            nsidc = xr.open_dataset(f"/glade/work/zespinosa/data/nsidc/daily/{hem}/raw/seaice_conc_monthly_197901-202312.nc")
+        else:
+            if hem != "south": 
+                raise ValueError("Only south hemisphere data is available in the remapped version")
 
-        #     nsidc = xr.open_dataset(f"/glade/work/zespinosa/data/remap_nsidc/nsidc_siconc_daily_regrid_25km_1979-01-2022-12.nc")
-        #     lat = np.arange(-89.5, 90.5, 1)
-        #     lon = np.arange(.5, 360.5, 1)
-        #     grid = xc.create_grid(lat, lon)
-        #     nsidc = nsidc.regridder.horizontal("ice", grid, tool='xesmf', method='bilinear')
-        # #     nsidc = nsidc.rename({"ice": "cdr_seaice_conc"})
+            nsidc = xr.open_dataset(f"/glade/work/zespinosa/data/remap_nsidc/nsidc_siconc_daily_regrid_25km_1979-01-2022-12.nc")
+            lat = np.arange(-89.5, 90.5, 1)
+            lon = np.arange(.5, 360.5, 1)
+            grid = xc.create_grid(lat, lon)
+            nsidc = nsidc.regridder.horizontal("ice", grid, tool='xesmf', method='bilinear')
+            nsidc = nsidc.rename({"ice": "cdr_seaice_conc"})
 
         return nsidc
 
@@ -182,11 +194,12 @@ class DataLoader():
         print(files[:5])
 
         # Drop all files before 1979
-        files = [f for f in files if int(f.split(".")[-2][:4]) >= 1979]
+        if not testing:
+            files = [f for f in files if int(f.split(".")[-2][:4]) >= 1950]
 
         # Drop all unwanted variables prior to lazy loading
         drop_vars = list(xr.open_dataset(files[0]).variables)
-        drop_vars = [cvar for cvar in drop_vars if cvar not in ["z_t", "time", "TLONG", "TLAT", "nlat", "nlon", "TLON" ,*myvars]]
+        drop_vars = [cvar for cvar in drop_vars if cvar not in ["lev", "z_t", "time", "lat", "lon", "TLONG", "TLAT", "ni", "nj", "nlat", "nlon", "TLON" ,*myvars]]
 
         # Lazy load data
         cesm2 = xr.open_mfdataset(files, coords="minimal", parallel=True, drop_variables=drop_vars, chunks={"time": 1, "nj": 384, "ni": 320})
@@ -216,7 +229,7 @@ class DataLoader():
         # Select only the first 1000m of the ocean (native units in cm so multiply by 1e2)
         if "z_t" in list(cesm2.variables.keys()):
             cesm2 = cesm2.sel(z_t = slice(0, 1000*1e2))
-        print(cesm2)
+        # print(cesm2)
 
         return cesm2
 
